@@ -1,7 +1,5 @@
 ## [Index]
 
-***
-
 ### 1. Index가 무엇이고, 왜 필요한지에 대해서 설명 해보실래요?
 
 <details>
@@ -94,8 +92,6 @@ Non-clustered Index는 Unique 제약조건을 걸면 자동 생성된다는 특�
 </details>
 
 ## [Normalization]
-
-***
 
 ### 6. 정규화에 대해서 설명해보실래요?
 
