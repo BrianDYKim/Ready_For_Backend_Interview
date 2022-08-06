@@ -1,4 +1,4 @@
-## [TCP] 3-way handshaking
+## [TCP]
 
 ### 1. TCP에 대해서 설명해주실래요?
 
@@ -62,6 +62,153 @@ TCP는 데이터의 신뢰성을 보장하기 위해서 대표적으로 아래�
 그러나 2번의 방식도 완벽하지는 않습니다. 아직도 DDOS 공격의 50%는 SYN Flood Attack이 주류를 이루니까요. 결국 Server는 SYN Proxy를 받더라도 SYN+ACK을 전송해야한다는 사실은 변함이 없고, DDOS 물량이 DDOS 방어장비의 수준을 넘어버리면 결국 서비스가 뻗을수밖에 없습니다.
 
 그러나 1번의 방식만으로는 대용량 아키텍처에서 SYN Backlog Queue 오버플로우 현상에서는 자유로워질수는 있을걸로 기대합니다. SYN+ACK, ACK에 SYN Cookie를 실어야한다는 점에서 오버헤드가 발생할수는 있으나, 연결 단계에서 지연을 겪는게 낫지, Cluster의 장애가 다시 발생하는것보다는 낫다고 판단됩니다.
+
+</div>
+</details>
+
+### 3. 4-way handshaking 과정에 대해서 설명해주실래요? 
+
+<details>
+<summary>접기/숨기기</summary>
+<div markdown="1">
+
+![](./img/4-way-handshaking.png)
+
+1. Client는 FIN Segment를 보냅니다.
+2. Server는 FIN을 수신받으면 ACK을 전송합니다.
+3. Server는 ACK을 전송한 뒤에 일정 시간이 지난 후 FIN Segment를 Client에 전송합니다. Server측에서 아직 덜 전송한 Segment가 존재할 수 있기 때문입니다.
+4. Client는 Server측의 FIN을 수신하면 ACK Segment를 전송하여 연결을 끊습니다.
+
+</div>
+</details>
+
+### 3. TCP의 Flow Control에 대해서 설명해주실래요? 
+
+<details>
+<summary>접기/숨기기</summary>
+<div markdown="1">
+
+Receiver측이 Segment를 수신할 때 마다 자신의 rwnd **(Receive window size)** 를 피드백 해줌으로써 Sender가 이를 참조하여 송신하는 window의 사이즈를 조절하는 기법이다.
+
+TCP는 파이프라이닝 기법을 이용해서 In-flight Packet을 window size만큼 보내는데, ACK이 돌아오는대로 window를 옮기는 **Slide Window** 방식으로 효율적인 데이터 전송을 합니다. 
+
+</div>
+</details>
+
+### 4. TCP의 Congestion Control에 대해서 설명해주실래요? 
+
+<details>
+<summary>접기/숨기기</summary>
+<div markdown="1">
+
+Congestion Control은 Sender측이 현재 Network의 혼잡도를 고려하여 자신의 Congestion Window 사이즈를 조절하여 송신 패킷의 양을 조절하는 기법이다.
+
+Congestion Control은 3개의 단계로 나누어지며, 이를 이해하기 위해서는 아래의 사전지식이 필요합니다.
+
+* Accumulative ACKs: TCP는 데이터의 신뢰성을 보장하기 위해서 ACK을 누적 방식으로 주고받습니다. 이를 이용해서 네트워크의 장애를 탐지합니다.
+* Duplicated ACKs: 같은 Seq num을 가지는 ACK이 중복되어서 수신되는 현상을 일컫습니다. TCP는 Accumulative ACK 정책을 따르기 때문에 ACK이 중복되어 발생하였다는 것은, 중간에 네트워크의 혼잡이 발생하였다는 뜻입니다. 일반적으로 3개의 중복 ACK이 발생하면 네트워크가 혼잡하다고 판단합니다.
+* ssthresh: 임계치를 뜻합니다.
+
+그러면 단계별로 설명을 드리겠습니다.
+
+![](./img/Congestion-Control.png)
+
+1. SS **(Slow Start)** : Congestion window size가 ssthresh에 도달할 때 까지 기하급수적으로 늘리는 단계입니다. 매번 cwnd를 2배로 올리는 단계입니다. 여기서 장애를 겪게되면 ssthresh를 절반으로 깎고 cwnd를 1로 초기화하고 SS를 다시 시작합니다.
+2. Congestion Avoidance: cwnd가 ssthresh를 넘어서면 자신의 cwnd를 선형적으로 증가시키는 단계입니다. 일반적으로 window size를 매 타임마다 1씩 증가시킵니다. 
+Congestion Avoidance 단계에서 장애가 발생시 두 가지의 선택지가 존재합니다.
+* Fast Retransmission: 3-duplicated ACK이 Congestion Control 단계에서 벌어질 시 진입하는 단계입니다. 그저 네트워크가 혼잡하기 때문에 벌어진 현상이기 때문에 자신의 cwnd를 절반으로 깎고 cwnd를 증가시키면서 빠르게 장애복구를 하는 단계입니다.
+* Slow Start 단계로 되돌아간다: Congestion Avoidance 단계에서 timeout이 발생할 시 선택하게되는 단계입니다. 이 때 ssthresh는 절반으로 깎고, cwnd는 1로 초기화되어서 처음부터 다시 시작합니다.
+
+3. Fast Recovery: 위에서 설명한 그대로입니다. 3-duplicated ACK이 발생할 시 진입하는 단계입니다.
+
+이 때 TCP는 Flow Control로 받은 rwnd 정보와 Congestion Control로 얻은 cwnd를 조합하여 자신의 송신 사이즈를 결정합니다. 일반적으로 min(cwnd, rwnd)로 결정합니다.
+
+</div>
+</details>
+
+## [UDP]
+
+### 5. UDP는 무엇인지 설명해주실수 있나요? 
+
+<details>
+<summary>접기/숨기기</summary>
+<div markdown="1">
+
+UDP는 TCP와는 다르게 **비연결지향형** 의 전송계층 프로토콜입니다. 다른 말로 Best-effort Protocol 이라고도 불립니다.
+
+UDP가 가지는 특성은 다음과 같습니다.
+
+* Flow/Congestion Control 과정이 없다. 즉, 신뢰성이 없는 프로토콜이다.
+* 데이터를 Datagram 단위로 전송한다.
+* 그래도 Checksum을 이용해서 Error Detection은 수행한다.
+
+UDP는 TCP와는 다르게 신뢰성을 가지지 않고 데이터를 전송하기 때문에 Transport layer에서 에러를 해결하지 않습니다. 따라서 상위 계층인 application layer에서 잘못된 데이터에 대한 해결을 해야하는 불편함이 존재합니다.
+
+</div>
+</details>
+
+### 6. UDP는 어디서 사용하는지 사례를 간단하게 들어주세요. 
+
+<details>
+<summary>접기/숨기기</summary>
+<div markdown="1">
+
+UDP는 신뢰성을 보장하기 어려운 프로토콜이지만, 비연결지향이라는 점에서
+1. 전송만 하고 피드백을 받지않아도 되는 서비스
+2. 신뢰성이 굳이 필요가 없는 서비스
+
+에서 사용이 됩니다.
+
+사례를 들자면 다음과 같습니다.
+
+* ICMP: 인터넷 제어 메시지 프로토콜로, OS 상에서 오류메시지를 주고받는데 주로 사용되는 프로토콜이다.
+* DNS: Domain Name Service로, 주어진 Domain Name과 주어진 IP를 상호치환하는데 사용하는 서비스입니다. 이 서비스에 대해서는 Client가 굳이 연결을 맺을 이유가 없기 때문에 UDP로 주로 서비스됩니다. 그러나, DNS도 UDP 전송 사이즈 제한을 넘게되면 TCP를 사용하는 경우가 간혹 있습니다.
+
+</div>
+</details>
+
+## [www.google.com을 검색하면 벌어지는 일]
+
+### 7. **www.google.com** 을 검색하면 벌어지는 일을 최대한 설명해보세요.  
+
+<details>
+<summary>접기/숨기기</summary>
+<div markdown="1">
+
+우선 HTTP, TCP/IP, Ethernet을 이용한다고 가정하겠습니다. 그리고 중간에 프록시 서버또한 없다는 가정하에 설명을 드리도록 하겠습니다.
+
+첫번째로 해야할 일은, 3-way handshaking 과정을 통해서 저의 컴퓨터와 구글 서버 간에 커넥션을 맺어야합니다. 그러기 위해서 저의 컴퓨터에서는 저의 컴퓨터 포트, IP, MAC 주소 그리고 구글 서버의 포트, IP, MAC 주소가 필요합니다.
+
+저의 컴퓨터 정보는 제 컴퓨터가 스스로 잘 알고있기 때문에 생략하고(사실 자신의 IP도 DHCP를 통해 받아야하지만, 생략하겠습니다), 구글 서버의 포트는 80번으로 well-known 이기 때문에 알아야할 정보는 구글 서버의 IP 주소와 MAC 주소입니다.
+
+우선 구글 서버의 IP부터 찾아야합니다. OS에 DNS 캐시부터 일단 뒤져서 구글 서버의 DNS가 캐시가 되어있는지부터 검사합니다. 만일 캐시된 정보가 있다면 해당 DNS 캐시에서 IP 주소를 따와서 IP Header에 넣어주고, 만일 없다면 우선 DNS를 통해 구글 서버의 IP를 찾아와야합니다.
+
+DNS 서비스의 경우 UDP 기반입니다. 따라서 별도의 커넥션 과정은 없으며 바로 http 요청을 이용해서 데이터를 가져오면 됩니다.
+
+DNS에서 구글 서버의 IP를 가져오는데 성공하였다면, 이 정보를 이용하여 IP 헤더에 해당 IP 주소를 목적지 IP에 채웁니다.
+
+ARP 프로토콜을 이용해서 자신의 컴퓨터 공유기의 MAC 주소를 알아냈다면, 해당 request를 공유기를 통해서 밖으로 내보내면 됩니다. 이 과정에서 자신의 컴퓨터는 private ip를 사용하고있는 입장이기 때문에 NAT를 통해서 공인 ip로 치환한 다음에 밖으로 보내게 됩니다.
+
+그리고 라우터를 떠도는 해당 요청은 구글 서버에 도달하기 전에 ARP 프로토콜을 이용해서 구글 서버의 MAC 주소를 취득한 다음에 구글 서버의 application layer까지 요청이 올라간 다음 구글 서버에서는 SYN + ACK을 저의 컴퓨터로 보냅니다. 이 과정은 지금까지 해왔던 과정의 역순입니다.
+
+이러한 일련의 과정을 통해서 저의 컴퓨터와 구글 서버 간의 커넥션이 맺어졌다면 html 파일을 구글 서버측에 요청합니다. 이 때도 이전에 시행하였던 과정의 반복입니다.
+
+구글 서버측에서 html 파일을 response에 실어서 보냈다면, 이를 저의 컴퓨터에서 받고난 다음, 4-way handshaking 과정을 통해서 커넥션을 끊습니다.
+
+> **만일 Proxy Server가 있다는 가정을 깔게된다면 제 컴퓨터에서 쏘아진 request는 구글 서버에 도달하는 것이 아닌, 프록시 서버로 도달합니다. 그리고 프록시 서버에 원하는 요청이 존재하는지 확인한 다음, 없다면 프록시 서버에서 구글 서버로 요청을 날려서 html을 취득한 다음, 그것을 다시 저의 컴퓨터로 전송하는 방식이 될겁니다.**
+
+</div>
+</details>
+
+## [HTTP]
+
+### 8. HTTP/1, HTTP/1.1, HTTP/2 에 대해서 설명해주실래요?
+
+<details>
+<summary>접기/숨기기</summary>
+<div markdown="1">
+
+나중에 추가 작성 하겠습니다.
 
 </div>
 </details>
