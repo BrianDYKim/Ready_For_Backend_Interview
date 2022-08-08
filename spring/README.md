@@ -258,6 +258,7 @@ class BeamServiceImpl: BeamService {
 <div markdown="1">
 
 **(그나마 제일 정확한 그림을 가져왔습니다)**
+
 ![](./img/spring-mvc-execution-structure.jpeg)
 
 Request가 들어와서 Response가 웹서버 외부로 나갈 때 까지의 과정을 순서대로 설명드리겠습니다.
@@ -272,7 +273,27 @@ Request가 들어와서 Response가 웹서버 외부로 나갈 때 까지의 과
 </div>
 </details>
 
-### 6. Bean, Component 어노테이션에 대해서 설명해주시고, 차이점도 말씀해주세요
+### 6. Front Controller 패턴이 무엇인지 설명해주실래요? (5번 질문의 연장선)
+
+<details>
+<summary>접기/숨기기</summary>
+<div markdown="1">
+
+우선 Servlet Container가 중앙에 존재하여, Request마다 적절한 Servlet을 Servlet Container에서 생성하여 처리를 한다고 가정하겠습니다.
+
+그러면 Request마다 적절한 Servlet이 싱글톤 인스턴스로 생성이 되어서 request, response가 적절하게 처리될것입니다. 그러나 이 방식에는 문제가 존재합니다.
+
+1. request, response를 받아서 처리하는 거는 모든 Servlet이 공통으로 하는 부분이다. 즉, Boilerplate가 불필요하게 많이 양산된다는 것이다.
+2. Request는 모두 Thread를 타고 들어오기 때문에 Servlet의 로직은 멀티쓰레드를 고려하여 작성해야한다. 즉, 구현에 어려움이 추가된다는 부분이 있다.
+
+따라서 Spring은 위 2가지 문제점을 해결하기 위해서 Front Controller 패턴을 도입하였는데요, **request, response는 모두 Dispatcher Servlet이 맡아서 처리하고, Request는 적절한 Handler method로 매핑시키는 역할을 수행하도록 하는것입니다.**
+
+이를 통해서 개발자는 Servlet을 직접 한땀한땀 짜는 것이 아닌, Controller, Service, Repository 등의 비지니스 로직에만 신경쓸 수 있도록 하였습니다.
+
+</div>
+</details>
+
+### 7. Bean, Component 어노테이션에 대해서 설명해주시고, 차이점도 말씀해주세요
 
 <details>
 <summary>접기/숨기기</summary>
@@ -284,7 +305,7 @@ Request가 들어와서 Response가 웹서버 외부로 나갈 때 까지의 과
 </div>
 </details>
 
-### 7. POJO란 무엇이고, Spring Framework 자체에서 어떠한 부분이 POJO가 될수있는지 설명해주세요. 
+### 8. POJO란 무엇이고, Spring Framework 자체에서 어떠한 부분이 POJO가 될수있는지 설명해주세요. 
 
 <details>
 <summary>접기/숨기기</summary>
@@ -299,7 +320,7 @@ POJO란 코드 작성에 있어서 외부의 기술이나 환경에 영향을 �
 </div>
 </details>
 
-### 8. Spring AOP에 대해서 설명해주실래요? 
+### 9. Spring AOP에 대해서 설명해주실래요? 
 
 <details>
 <summary>접기/숨기기</summary>
@@ -388,7 +409,7 @@ Spring은 이를 해소하기 위해서 지금까지 설명해온 개념들을 �
 </div>
 </details>
 
-### 9. Spring AOP가 적용이 안되는 경우가 있다면 설명해주시고, 이 때는 어떻게 해야하는지 간단하게 설명만 해주세요. 
+### 10. Spring AOP가 적용이 안되는 경우가 있다면 설명해주시고, 이 때는 어떻게 해야하는지 간단하게 설명만 해주세요. 
 
 <details>
 <summary>접기/숨기기</summary>
