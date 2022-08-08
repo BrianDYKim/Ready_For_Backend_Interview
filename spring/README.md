@@ -257,8 +257,148 @@ class BeamServiceImpl: BeamService {
 <summary>접기/숨기기</summary>
 <div markdown="1">
 
+**(그나마 제일 정확한 그림을 가져왔습니다)**
+![](./img/spring-mvc-execution-structure.jpeg)
 
+Request가 들어와서 Response가 웹서버 외부로 나갈 때 까지의 과정을 순서대로 설명드리겠습니다.
+
+1. Request가 들어오면 우선 Servlet filter를 거친다. 이 때 filter는 Filter Chain Proxy의 형태로 구성이 되어있으며, 모든 filter를 통과하면 request는 Dispatcher Servlet으로 들어간다
+2. Dispatcher Servlet은 filter를 통과한 request에 대해서 Handler Mapping에 적절한 Handler method가 존재하는지를 물어본다. 존재하는 경우 Dispatcher Servlet에 통보한다.
+3. Handler Method로 보내기 전에 Request는 Interceptor를 거쳐야한다. Interceptor는 Spring context에서 관리가 되며, Controller에 들어가기 전후로 요청을 검증하는 역할을 수행한다.
+4. Interceptor를 통과한 Request에 대해서 Handler Adapter를 통과하여 Handler Method에 도달한다. Handler method는 Request에 대해서 ModelAndView를 반환시킨다. 그리고 이 또한 Interceptor를 거쳐서 검증을 받아야한다.
+5. Interceptor를 통과한 Response에 대하여 View가 존재하는 경우 ViewResolver로 보내지게된다. ViewResolver에 대해서는 들어온 Response에 대하여 렌더링 할 뷰가 존재하는 경우 Response와 함께 같이 렌더링하여 Dispatcher Servlet으로 보낸다.
+6. 해당 View를 filter로 날려서 검증을 수행한다. filter를 통과한 Response는 비로소 웹서버를 통과하여 우리에게 Http Response로 돌아온다.
 
 </div>
 </details>
 
+### 6. Bean, Component 어노테이션에 대해서 설명해주시고, 차이점도 말씀해주세요
+
+<details>
+<summary>접기/숨기기</summary>
+<div markdown="1">
+
+1. @Component: 지정된 클래스를 Application 생성 시점에 단 1회 생성하여 Singleton 객체로 IoC Container에 관리할 수 있도록 하는 어노테이션이다. @Repository, @Service, @Controller 등이 그 예시이다.
+2. @Bean: 메소드에 대하여 메소드의 반환 객체를 IoC Container에 담아서 보관할 수 있게 해주는 어노테이션이다.
+
+</div>
+</details>
+
+### 7. POJO란 무엇이고, Spring Framework 자체에서 어떠한 부분이 POJO가 될수있는지 설명해주세요. 
+
+<details>
+<summary>접기/숨기기</summary>
+<div markdown="1">
+
+POJO란 코드 작성에 있어서 외부의 기술이나 환경에 영향을 받지않고 Java API 만으로 작성할 수 있게하자는 프로그래밍 정신입니다. 
+
+이러한 POJO는 Spring에서 Controller / Service / Repository 3계층을 둚으로써 Service logic 구현부터는 Repository의 DB Acccess 로직은 블랙박스 처리를 하여 DB의 접근 기술, DB의 환경에 영향을 받지않고 Business logic을 작성할 수 있게 되는것이 대표적인 예시가 되겠습니다.
+
+추가로 말씀드리자면, Spring Data JPA도 POJO의 정신을 잘 구현하고있다고도 생각합니다. Spring Data JPA의 경우 Database의 종류에 관계없이, 혹은 특정 db에 종속되는 dialect 설정만 해주면 DB의 기술, 종류에 구애받지 않고 일관성있게 DB Access logic을 작성할 수 있게 됩니다.
+
+</div>
+</details>
+
+### 8. Spring AOP에 대해서 설명해주실래요? 
+
+<details>
+<summary>접기/숨기기</summary>
+<div markdown="1">
+
+> 👉 **Spring AOP에 관해서는 토비의 스프링에서도 150페이지에 걸쳐서 설명하고 있습니다. 여기에 적힌 설명은 그저 요약일 뿐이며, 자세한거는 토비의 스프링 3.1을 참고해주시길 바랍니다.**
+
+Spring AOP란 그대로 직역하자면 **관점 지향형 프로그래밍** 입니다. 우선 Spring AOP에 대해서 이해를 하기 위해서는 **관점 지향형 프로그래밍이라는 단어가 왜 등장하였는지부터 배경을 알 필요가 있습니다.**
+
+Spring AOP를 설명하기 좋은 예시는 다름아닌 Transaction을 JDBC로 처리하는 Service logic입니다. 아래의 코드를 먼저 볼까요?
+
+~~~kotlin
+@Service
+class ChatServiceImpl(
+private val chatRepository: ChatRepository
+): ChatService {
+    override fun like(likeDto: LikeDto): Unit {
+        val status = this.transactionManager.getTransaction(DefaultTransactionDefinition())
+        
+        try {
+            ...
+            this.transactionManager.commit(status)
+        } catch(_: Exception) {
+            this.transactionManager.rollback(status)
+            throw LikeErrorException("Like Error!!")
+        }
+    }
+}
+~~~
+
+이 코드의 문제점이라면, Service 로직을 transaction 내부에서 처리를 해야하지만, 매 로직마다 모두 transaction을 정의하고, try-catch 문으로 일괄적으로 처리를 해줘야한다는 점에 있습니다.
+
+그렇기 때문에 가능한 보일러플레이트를 줄이기 위해서라도 transaction을 정의하는 부분 따로, 비지니스 로직을 정의하는 부분 따로 해주면 아주 좋을겁니다.
+
+따라서 아래와 같이 분리가 가능할겁니다.
+
+~~~kotlin
+@Service
+class ChatServiceImpl(
+private val chatRepository: ChatRepository
+): ChatService {
+    override fun like(likeDto: LikeDto): Unit {
+        ...
+    }
+}
+
+@Service
+class ChatServiceTx(
+    private val chatServiceImpl: ChatService
+): ChatService {
+    override fun like(likeDto: LikeDto): Unit {
+        val status = this.transactionManager.getTransaction(DefaultTransactionDefinition())
+        
+        try {
+            chatServiceImpl.like(likeDto)
+            this.transactionManager.commit(status)
+        } catch(_: Exception) {
+            this.transactionManager.rollback(status)
+        }
+    }
+}
+~~~
+
+위와 같은 구조를 **데코레이터 패턴** 이라고 부르는데요, 일반적으로 기존의 클래스에서 부가기능을 더해주고 싶을 때 사용할 수 있는 패턴입니다.
+
+그러나 위와 같은 방식도 문제는 있습니다. **비지니스 로직을 분리하는데는 성공했을지 몰라도, 아직도 transaction 처리를 위해서 보일러플레이트를 양산해야한다는 것입니다.**
+
+하지만 이 문제는 객체지향적으로만 해결하기에는 한계가 있습니다. 따라서 다른 방법으로 분리를 해줘야하는데요, 이 때 사용할 수 있는 방식이 **Dynamic Proxy** 입니다.
+
+Dynamic Proxy는 **Java Reflection을 기반으로 동적으로 프록시를 생성하여 기존의 메소드에 부가기능을 더해줄 수 있다는 특징을 가집니다.**
+
+그러나 Dynamic Proxy 방식은 하나의 문제점이 있는데, **런타임에 동적으로 생성이 되는 객체이기 때문에 특별한 방법을 거치지 않는 이상 IoC Container에 Bean으로 등록할 수 없다는 점에 있습니다.**
+
+이를 위해서 Proxy Factory Bean이라는 것을 Spring에서 제공을 해주지만, 이 또한 타겟 오브젝트와 Proxy Factory Bean이 1대1 관계를 맺어야하기 때문에 xml을 계속 작성해줘야한다는 **개발 피로** 를 유발합니다.
+
+Spring은 이를 해소하기 위해서 지금까지 설명해온 개념들을 모두 혼합하여 Spring AOP라는 것을 개발하였습니다. 
+
+* Advice: 메소드에 부여할 추가 기능을 정의한 오브젝트
+* JoinPoint: 메소드에 부여되는 추가 기능이 개입하는 시점을 정의한 오브젝트
+* PointCut: 메소드의 시그니처를 이용해서 타켓 메소드를 지정하는데 사용하는 오브젝트
+
+이를 통해서 개발자는 동적으로 프록시를 생성하거나, 혹은 팩토리 프록시 빈을 작성할 필요 없이 Spring AOP를 활용하여 간단하게 부가기능을 정의할 수 있게됩니다.
+
+그리고 이러한 Spring AOP의 대표는, 다름아닌 @Transactional 어노테이션인데요, 개발자는 이 어노테이션만 붙임으로써 비지니스 로직에 트랜잭션을 정의할 수 있게됩니다.
+
+</div>
+</details>
+
+### 9. Spring AOP가 적용이 안되는 경우가 있다면 설명해주시고, 이 때는 어떻게 해야하는지 간단하게 설명만 해주세요. 
+
+<details>
+<summary>접기/숨기기</summary>
+<div markdown="1">
+
+Spring AOP는 Java Reflection 기반으로 구현된 기술이기 때문에 **메소드만을 타겟팅할 수 있습니다.** 즉, 메소드 외에 다른것이 타겟이거나, 혹은 리플렉션으로 커버가 안되는 로직에 대해서는 Spring AOP로 해결이 불가능하다는 뜻입니다.
+
+이러한 경우 해결방법은, **AspectJ** 를 사용하는 것입니다. AspectJ는 클래스를 바이트코드 단위로 뜯어서 부가기능을 추가하는 것이 가능합니다.
+
+하지만 개발하면서 AspectJ까지 활용하면서 부가기능을 더할 일은 거의 없기 때문에, 이렇구나 정도만 알고 지나가셔도 무방합니다.
+
+</div>
+</details>
