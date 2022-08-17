@@ -421,5 +421,9 @@ Spring AOP는 Java Reflection 기반으로 구현된 기술이기 때문에 **�
 
 하지만 개발하면서 AspectJ까지 활용하면서 부가기능을 더할 일은 거의 없기 때문에, 이렇구나 정도만 알고 지나가셔도 무방합니다.
 
+👉 **8월 18일 추가 사항**: AOP의 적용 대상이 아닌 메소드에서 AOP 적용 대상의 메소드를 호출하려고 시도하면 해당 AOP가 적용되지 않는 현상도 존재한다고 한다. 자세한건 아래 링크를 찹고하면 되겠습니다!
+
+[Spring AOP를 사용시 주의할 점](https://velog.io/@18k7102dy/Spring-AOP-Spring-AOP%EB%A5%BC-%EC%82%AC%EC%9A%A9%EC%8B%9C-%EC%A3%BC%EC%9D%98%ED%95%B4%EC%95%BC%ED%95%A0-%EC%A0%90)
+
 </div>
 </details>
